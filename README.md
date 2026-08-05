@@ -115,19 +115,9 @@ Example prediction request:
 
 ```json
 {
-  "symptoms": "severe headache with nausea and sensitivity to light",
-  "image_filename": null
+  "symptoms": "severe headache with nausea and sensitivity to light"
 }
 ```
-
-## Screenshots
-
-Add screenshots after running the app:
-
-- `docs/screenshots/landing-page.png`
-- `docs/screenshots/detection-page.png`
-- `docs/screenshots/dashboard.png`
-- `docs/screenshots/mobile-view.png`
 
 ## Deployment
 
