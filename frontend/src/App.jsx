@@ -16,7 +16,18 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import { getStats, predictDisease } from './services/api';
+import { getStats, getVitals, predictDisease } from './services/api';
+
+const LAST_STABLE_VITAL_KEY = 'medi-mind-last-stable-vital';
+
+function loadLastStableVital() {
+  try {
+    const saved = sessionStorage.getItem(LAST_STABLE_VITAL_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    return null;
+  }
+}
 
 const initialQuestionnaire = {
   patientName: '',
@@ -88,11 +99,53 @@ function App() {
   const [prediction, setPrediction] = useState(null);
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState('');
+  const [vitals, setVitals] = useState({
+    state: 'connecting',
+    message: 'Connecting to the ESP32…',
+    heart_rate: null,
+    average_heart_rate: null,
+  });
+  const [lastStableVital, setLastStableVital] = useState(loadLastStableVital);
 
   useEffect(() => {
     getStats()
       .then(setStats)
       .catch((error) => setStatsError(error.message));
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const refreshVitals = async () => {
+      try {
+        const nextVitals = await getVitals();
+        if (active) {
+          setVitals(nextVitals);
+          if (nextVitals.state === 'measuring' && nextVitals.average_heart_rate) {
+            const stableVital = {
+              average: nextVitals.average_heart_rate,
+              updatedAt: nextVitals.updated_at,
+            };
+            setLastStableVital(stableVital);
+            sessionStorage.setItem(LAST_STABLE_VITAL_KEY, JSON.stringify(stableVital));
+          }
+        }
+      } catch {
+        if (active) {
+          setVitals({
+            state: 'disconnected',
+            message: 'ESP32 is unavailable on COM13. Connect it, then close Arduino Serial Monitor or any other serial app.',
+            heart_rate: null,
+            average_heart_rate: null,
+          });
+        }
+      }
+    };
+    refreshVitals();
+    const interval = window.setInterval(refreshVitals, 1000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
   }, []);
 
   const confidenceStyle = useMemo(() => {
@@ -133,6 +186,13 @@ function App() {
       setNotice('Please enter the patient name.');
       return;
     }
+    const heartRateAverage = vitals.state === 'measuring' && vitals.average_heart_rate
+      ? vitals.average_heart_rate
+      : lastStableVital?.average;
+    if (!heartRateAverage) {
+      setNotice('A stable heart-rate average is required before analysis. ' + vitals.message);
+      return;
+    }
     if (!questionnaire.age || Number(questionnaire.age) < 1 || Number(questionnaire.age) > 120) {
       setNotice('Please enter a valid age between 1 and 120.');
       return;
@@ -158,6 +218,8 @@ function App() {
         severity: questionnaire.severity || null,
         pre_existing_conditions: questionnaire.preExistingConditions,
         image_filename: null,
+        heart_rate: heartRateAverage,
+        average_heart_rate: heartRateAverage,
       });
       setPrediction(result);
       const nextStats = await getStats();
@@ -207,8 +269,8 @@ function App() {
           <div className="hero-visual" aria-label="Medical analytics illustration">
             <div className="pulse-card">
               <Activity size={30} />
-              <span>Model accuracy</span>
-              <strong>{stats ? `${stats.accuracy}%` : 'Loading'}</strong>
+              <span>Live heart rate</span>
+              <strong>{vitals.heart_rate ? `${Math.round(vitals.heart_rate)} BPM` : '--'}</strong>
             </div>
             <div className="signal-panel">
               <span />
@@ -217,7 +279,7 @@ function App() {
               <span />
               <span />
             </div>
-            <div className="diagnosis-chip"><Stethoscope size={18} /> Symptom-based prediction</div>
+            <div className="diagnosis-chip"><Stethoscope size={18} /> Sensor-assisted symptom guidance</div>
           </div>
         </section>
 
@@ -259,11 +321,52 @@ function App() {
         <section className="section detector" id="detect">
           <div className="section-heading">
             <span className="eyebrow"><Upload size={16} /> Detection</span>
-            <h2>Patient questionnaire.</h2>
-            <p>Fill in the patient details, select the closest symptom group, and describe symptoms clearly for prediction.</p>
+            <h2>Live vitals, then symptom context.</h2>
+            <p>Your heart rate is read directly from the ESP32. It is read-only and must never be typed manually.</p>
           </div>
           <div className="detector-layout">
             <form className="detector-form" onSubmit={handlePredict}>
+              <section className={`vitals-card vitals-${vitals.state}`} aria-live="polite">
+                <div className="vitals-icon"><HeartPulse size={26} /></div>
+                <div className="vitals-copy">
+                  <span className="vitals-label">Primary vital input</span>
+                  <strong>{vitals.heart_rate ? `${Math.round(vitals.heart_rate)} BPM` : '—'}</strong>
+                  <p>{vitals.state === 'measuring' ? vitals.vital_triage_message : vitals.message}</p>
+                </div>
+                <div className="vitals-meta">
+                  <span>{vitals.state === 'measuring' ? vitals.vital_triage_title : (vitals.average_heart_rate ? `Avg ${vitals.average_heart_rate} BPM` : 'Read-only')}</span>
+                  <i />
+                </div>
+              </section>
+
+              <div className="field heart-rate-field">
+                <div className="field-label-row">
+                  <label htmlFor="heartRateAverage">Heart rate — automatic average</label>
+                  <span className={vitals.state === 'measuring' ? 'live-tag' : 'saved-tag'}>
+                    {vitals.state === 'measuring' ? 'Live sensor' : 'Last stable reading'}
+                  </span>
+                </div>
+                <input
+                  id="heartRateAverage"
+                  aria-describedby="heartRateHelp"
+                  readOnly
+                  value={
+                    vitals.state === 'measuring' && vitals.average_heart_rate
+                      ? `${vitals.average_heart_rate} BPM`
+                      : lastStableVital?.average
+                        ? `${lastStableVital.average} BPM`
+                        : 'Waiting for a stable sensor reading'
+                  }
+                />
+                <small id="heartRateHelp">
+                  {vitals.state === 'measuring'
+                    ? 'Updates automatically from the filtered MAX30102 average and is used for the vital-first assessment.'
+                    : lastStableVital?.average
+                      ? 'The last stable average is retained while the sensor reconnects and is used for this session’s assessment.'
+                      : 'This field cannot be edited. Connect the sensor and place your finger on it.'}
+                </small>
+              </div>
+
               <div className="form-grid">
                 <div className="field">
                   <label htmlFor="patientName">Patient name</label>
@@ -375,8 +478,15 @@ function App() {
             <aside className="result-panel">
               {prediction ? (
                 <>
+                  <section className={`vital-triage triage-${prediction.vital_triage_level?.toLowerCase()}`}>
+                    <span>Primary decision from live heart rate · {prediction.vital_triage_level}</span>
+                    <h3>{prediction.vital_triage_title}</h3>
+                    <p>{prediction.vital_triage_message}</p>
+                    <strong className="care-action">{prediction.primary_assessment}</strong>
+                    <p className="care-copy">{prediction.care_action}</p>
+                  </section>
                   <div className="result-header">
-                    <span>Prediction for {questionnaire.patientName}</span>
+                    <span>{prediction.symptom_result_is_secondary ? 'Secondary symptom-pattern context for' : 'Symptom-pattern result for'} {questionnaire.patientName}</span>
                     <strong>{prediction.predicted_disease}</strong>
                   </div>
                   <div className="patient-summary">
@@ -385,7 +495,7 @@ function App() {
                     {questionnaire.symptomGroup && <span>{questionnaire.symptomGroup}</span>}
                   </div>
                   <div className="confidence" style={confidenceStyle}>
-                    <span><b>{prediction.confidence}%</b> confidence</span>
+                    <span><b>{prediction.confidence}%</b> symptom-pattern confidence</span>
                     <div><i /></div>
                   </div>
                   <div className={`emergency emergency-${prediction.emergency_level.toLowerCase()}`}>
@@ -393,6 +503,10 @@ function App() {
                   </div>
                   <p>{prediction.explanation}</p>
                   <dl className="result-list">
+                    <div>
+                      <dt>Live vital</dt>
+                      <dd>{prediction.vital_summary || 'Heart-rate data unavailable.'}</dd>
+                    </div>
                     <div>
                       <dt>Doctor</dt>
                       <dd>{prediction.doctor_recommendation}</dd>
@@ -427,7 +541,7 @@ function App() {
           <div className="stats-grid">
             <div className="stat"><span>Records</span><strong>{stats?.total_records ?? '--'}</strong></div>
             <div className="stat"><span>Diseases</span><strong>{stats?.total_diseases ?? '--'}</strong></div>
-            <div className="stat"><span>Accuracy</span><strong>{stats ? `${stats.accuracy}%` : '--'}</strong></div>
+            <div className="stat"><span>Holdout score</span><strong>{stats ? `${stats.accuracy}%` : '--'}</strong></div>
           </div>
           <div className="dashboard-grid">
             <div className="chart-panel">
@@ -454,6 +568,11 @@ function App() {
               )}
             </div>
           </div>
+          {stats?.training_sources?.length > 0 && (
+            <p className="data-note">
+              Training data: {stats.training_sources.join(' + ')}. Removed {stats.duplicate_rows_removed} exact duplicates from the original project dataset before training. The holdout score is a dataset metric, not clinical accuracy.
+            </p>
+          )}
         </section>
 
         <section className="section about" id="about">

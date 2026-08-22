@@ -11,6 +11,8 @@ class PredictionRequest(BaseModel):
     severity: str | None = Field(default=None, max_length=40)
     pre_existing_conditions: list[str] = Field(default_factory=list, max_length=10)
     image_filename: str | None = Field(default=None, max_length=255)
+    heart_rate: float | None = Field(default=None, ge=20, le=255)
+    average_heart_rate: float | None = Field(default=None, ge=20, le=255)
 
 
 class DietPlan(BaseModel):
@@ -31,6 +33,25 @@ class PredictionResponse(BaseModel):
     general_advice: list[str]
     disclaimer: str
     created_at: str
+    heart_rate: float | None = None
+    vital_summary: str | None = None
+    vital_triage_level: str | None = None
+    vital_triage_title: str | None = None
+    vital_triage_message: str | None = None
+    primary_assessment: str | None = None
+    care_action: str | None = None
+    symptom_result_is_secondary: bool = False
+
+
+class VitalsResponse(BaseModel):
+    state: str
+    message: str
+    heart_rate: float | None = None
+    average_heart_rate: int | None = None
+    updated_at: str | None = None
+    vital_triage_level: str | None = None
+    vital_triage_title: str | None = None
+    vital_triage_message: str | None = None
 
 
 class StatsResponse(BaseModel):
@@ -39,3 +60,5 @@ class StatsResponse(BaseModel):
     total_diseases: int
     top_diseases: list[dict[str, int | str]]
     recent_predictions: list[PredictionResponse]
+    training_sources: list[str] = []
+    duplicate_rows_removed: int = 0

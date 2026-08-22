@@ -26,3 +26,7 @@ export function predictDisease(payload) {
 export function getStats() {
   return request('/api/stats');
 }
+
+export function getVitals() {
+  return request('/api/vitals');
+}
