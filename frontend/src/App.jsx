@@ -105,10 +105,10 @@ function App() {
   const [stats, setStats] = useState(null);
   const [statsError, setStatsError] = useState('');
   const [vitals, setVitals] = useState({
-    state: 'measuring',
-    message: 'Connecting live vitals feed...',
-    heart_rate: 75.0,
-    average_heart_rate: 74,
+    state: 'disconnected',
+    message: 'ESP32 is unavailable on COM13. Connect it, then close Arduino Serial Monitor or any other serial app.',
+    heart_rate: null,
+    average_heart_rate: null,
   });
   const [questionnaire, setQuestionnaire] = useState(initialQuestionnaire);
   const [prediction, setPrediction] = useState(null);
@@ -130,12 +130,13 @@ function App() {
       getVitals()
         .then((data) => {
           setVitals(data);
-          // Auto-populate questionnaire heart rate if empty
-          setQuestionnaire((curr) => ({
-            ...curr,
-            heartRate: curr.heartRate || (data.heart_rate ? String(Math.round(data.heart_rate)) : ''),
-            averageHeartRate: curr.averageHeartRate || (data.average_heart_rate ? String(data.average_heart_rate) : ''),
-          }));
+          if (data.heart_rate) {
+            setQuestionnaire((curr) => ({
+              ...curr,
+              heartRate: curr.heartRate || String(Math.round(data.heart_rate)),
+              averageHeartRate: curr.averageHeartRate || (data.average_heart_rate ? String(data.average_heart_rate) : ''),
+            }));
+          }
         })
         .catch(() => {});
     };
@@ -303,20 +304,16 @@ function App() {
 
           <div className="hero-visual" aria-label="Medical analytics illustration">
             {/* LIVE HEART RATE CARD */}
-            <div className="vitals-hero-card">
-              <div className="vitals-hero-header">
-                <div className="vitals-hero-icon"><Heart size={24} className="pulse-heart" /></div>
-                <div>
-                  <span className="vitals-hero-label">LIVE HEART RATE FEED</span>
-                  <div className="vitals-hero-bpm">
-                    <strong>{vitals.heart_rate ? Math.round(vitals.heart_rate) : '--'}</strong>
-                    <span className="unit">BPM</span>
-                  </div>
-                </div>
+            <div className={`vitals-card vitals-${vitals.state}`}>
+              <div className="vitals-icon"><Heart size={24} className={vitals.heart_rate ? 'pulse-heart' : ''} /></div>
+              <div className="vitals-copy">
+                <span className="vitals-label">LIVE SENSOR FEED (COM13)</span>
+                <strong>{vitals.heart_rate ? `${Math.round(vitals.heart_rate)} BPM` : 'No vital'}</strong>
+                <p>{vitals.message}</p>
               </div>
-              <div className="vitals-hero-sub">
-                <span>Average Resting Pulse: <strong>{vitals.average_heart_rate ?? '--'} BPM</strong></span>
-                <span className="vitals-status-tag">{vitals.state.toUpperCase()}</span>
+              <div className="vitals-meta">
+                <span>{vitals.average_heart_rate ? `AVG: ${vitals.average_heart_rate} BPM` : 'AVERAGE BPM'}</span>
+                <i />
               </div>
             </div>
 
@@ -360,19 +357,22 @@ function App() {
           <div className="section-heading">
             <span className="eyebrow"><Upload size={16} /> AI Symptom & Vital Checker</span>
             <h2>Patient Questionnaire & Live Heart Rate Analysis</h2>
-            <p>Stream live heart rate from sensor feed, describe symptoms in natural language, and generate diagnostic predictions.</p>
+            <p>Stream live heart rate from MAX30102 sensor, describe symptoms in natural language, and generate diagnostic predictions.</p>
           </div>
 
           <div className="detector-layout">
             <form className="detector-form" onSubmit={handlePredict}>
               {/* LIVE VITALS SENSOR BANNER */}
-              <div className="live-vitals-banner">
-                <div className="vitals-banner-left">
-                  <Heart size={20} className="pulse-heart" />
-                  <div>
-                    <strong>Live Sensor Heart Rate: {vitals.heart_rate ? Math.round(vitals.heart_rate) : '--'} BPM</strong>
-                    <span>Rolling Average: {vitals.average_heart_rate ?? '--'} BPM • {vitals.message}</span>
-                  </div>
+              <div className={`vitals-card vitals-${vitals.state}`}>
+                <div className="vitals-icon"><Heart size={24} className={vitals.heart_rate ? 'pulse-heart' : ''} /></div>
+                <div className="vitals-copy">
+                  <span className="vitals-label">LIVE MAX30102 HARDWARE FEED</span>
+                  <strong>{vitals.heart_rate ? `${Math.round(vitals.heart_rate)} BPM` : 'No Live Pulse'}</strong>
+                  <p>{vitals.message}</p>
+                </div>
+                <div className="vitals-meta">
+                  <span>{vitals.average_heart_rate ? `AVG RESTING: ${vitals.average_heart_rate} BPM` : 'AVERAGE BPM'}</span>
+                  <i />
                 </div>
               </div>
 
@@ -401,15 +401,19 @@ function App() {
               </div>
 
               <div className="form-grid">
-                <div className="field">
-                  <label htmlFor="heartRate">Current Heart Rate (BPM)</label>
+                <div className="field heart-rate-field">
+                  <div className="field-label-row">
+                    <label htmlFor="heartRate">Current Heart Rate (BPM)</label>
+                    {vitals.heart_rate ? <span className="live-tag">LIVE SENSOR</span> : <span className="saved-tag">MANUAL / OFF</span>}
+                  </div>
                   <input
                     id="heartRate"
                     type="number"
                     value={questionnaire.heartRate}
                     onChange={(event) => updateQuestion('heartRate', event.target.value)}
-                    placeholder={vitals.heart_rate ? `${Math.round(vitals.heart_rate)} (Live Sensor)` : 'e.g. 75'}
+                    placeholder={vitals.heart_rate ? `${Math.round(vitals.heart_rate)} BPM (Live)` : 'e.g. 75'}
                   />
+                  <small>Auto-filled from ESP32 MAX30102 stream or manual entry.</small>
                 </div>
                 <div className="field">
                   <label htmlFor="averageHeartRate">Average Resting Pulse (BPM)</label>
@@ -418,7 +422,7 @@ function App() {
                     type="number"
                     value={questionnaire.averageHeartRate}
                     onChange={(event) => updateQuestion('averageHeartRate', event.target.value)}
-                    placeholder={vitals.average_heart_rate ? `${vitals.average_heart_rate} (Average)` : 'e.g. 72'}
+                    placeholder={vitals.average_heart_rate ? `${vitals.average_heart_rate} BPM (Avg)` : 'e.g. 72'}
                   />
                 </div>
               </div>
@@ -510,21 +514,19 @@ function App() {
               {prediction ? (
                 <div className="result-content">
                   {/* LIVE VITAL TRIAGE CARD */}
-                  <div className={`vital-triage-card triage-${prediction.vital_triage_level.toLowerCase()}`}>
-                    <div className="triage-header">
-                      <ShieldAlert size={20} />
-                      <span>{prediction.vital_triage_title}</span>
-                    </div>
-                    <p className="triage-msg">{prediction.vital_triage_message}</p>
-                    <strong className="triage-assessment">Primary Triage: {prediction.primary_assessment}</strong>
-                    <p className="triage-action">{prediction.care_action}</p>
-                  </div>
+                  <section className={`vital-triage triage-${prediction.vital_triage_level.toLowerCase()}`}>
+                    <span>Vital Triage Control</span>
+                    <h3>{prediction.vital_triage_title}</h3>
+                    <p>{prediction.vital_triage_message}</p>
+                    <strong className="care-action">{prediction.primary_assessment}</strong>
+                    <p className="care-copy">{prediction.care_action}</p>
+                  </section>
 
                   <div className="result-header">
                     <span>
                       {prediction.symptom_result_is_secondary
                         ? 'Secondary symptom-pattern context for '
-                        : 'Diagnostic Result for '}
+                        : 'Symptom-pattern result for '}
                       <strong>{questionnaire.patientName}</strong>
                     </span>
                     <h3 className="primary-disease">{prediction.predicted_disease}</h3>
@@ -533,12 +535,12 @@ function App() {
                   <div className="patient-summary">
                     <span>{questionnaire.age} yrs</span>
                     {questionnaire.sex && <span>{questionnaire.sex}</span>}
-                    {prediction.vital_summary && <span>{prediction.vital_summary}</span>}
+                    {questionnaire.symptomGroup && <span>{questionnaire.symptomGroup}</span>}
                   </div>
 
                   <div className="confidence-meter">
                     <div className="confidence-label">
-                      <span>Model Confidence</span>
+                      <span>Symptom-Pattern Confidence</span>
                       <strong>{prediction.confidence}%</strong>
                     </div>
                     <div className="confidence-track">
@@ -555,7 +557,12 @@ function App() {
 
                   <div className="result-details">
                     <div className="detail-item">
-                      <span className="detail-title"><Stethoscope size={16} /> Recommended Specialist</span>
+                      <span className="detail-title"><HeartPulse size={16} /> Live Vital</span>
+                      <p className="detail-value">{prediction.vital_summary || 'Heart-rate data unavailable.'}</p>
+                    </div>
+
+                    <div className="detail-item">
+                      <span className="detail-title"><Stethoscope size={16} /> Doctor Specialist</span>
                       <p className="detail-value highlight">{prediction.doctor_recommendation}</p>
                     </div>
 

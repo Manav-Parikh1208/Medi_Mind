@@ -101,8 +101,7 @@ class DiseaseModelService:
     def detect_emergency(symptoms: str, heart_rate: float | None = None, average_heart_rate: int | None = None) -> str:
         symptoms_lower = symptoms.lower()
 
-        # Physiological heart rate red flags
-        assessed_hr = average_heart_rate or heart_rate
+        assessed_hr = average_heart_rate or (int(heart_rate) if heart_rate else None)
         if assessed_hr is not None:
             if assessed_hr >= 120 or assessed_hr <= 45:
                 return "HIGH"
@@ -158,8 +157,8 @@ class DiseaseModelService:
         if heart_rate is None and average_heart_rate is None:
             return (
                 "UNAVAILABLE",
-                "Heart-Rate Feed Inactive",
-                "Connect the MAX30102 sensor feed to enable live physiological monitoring.",
+                "Live vital required",
+                "Connect the ESP32/MAX30102 and obtain a stable reading before continuing.",
             )
 
         assessed_rate = average_heart_rate or (int(heart_rate) if heart_rate else None)
@@ -167,63 +166,60 @@ class DiseaseModelService:
             return ("UNAVAILABLE", "Reading Incomplete", "Awaiting stable pulse reading.")
 
         symptoms_lower = symptoms.lower()
-        red_flags = ("chest pain", "shortness of breath", "breathing difficulty", "faint", "dizzy")
-        if any(flag in symptoms_lower for flag in red_flags) and (assessed_rate > 100 or assessed_rate < 55):
+        red_flags = ("chest pain", "shortness of breath", "breathing difficulty", "faint", "fainted", "passing out")
+        if any(flag in symptoms_lower for flag in red_flags):
             return (
                 "EMERGENCY",
-                "Critical Vital & Symptom Alert",
-                f"Heart rate of {assessed_rate} BPM combined with acute symptoms warrants urgent emergency clinical review.",
+                "Urgent symptoms reported",
+                "Seek emergency care now for these symptoms; do not rely on this sensor or website to rule out a serious condition.",
             )
-
         if assessed_rate < 50 or assessed_rate > 120:
             return (
                 "CLINICIAN_REVIEW",
-                "Outside Typical Resting Range",
-                f"Heart rate of {assessed_rate} BPM is outside the 60-100 BPM resting range. Rest quietly and arrange clinical assessment if this persists.",
+                "Outside a typical resting range",
+                "Sit quietly and repeat the measurement. If this persists, or you feel unwell, contact a clinician promptly. Athletes and some medicines can affect resting heart rate.",
             )
-
         if assessed_rate < 60 or assessed_rate > 100:
             return (
                 "RECHECK",
-                "Slightly Elevated / Low Resting Pulse",
-                f"Heart rate of {assessed_rate} BPM is slightly elevated or low compared to average 60-100 BPM. Recheck after 5 minutes rest.",
+                "Recheck while resting",
+                "This is outside the common 60–100 BPM adult resting range. Rest for five minutes, keep your finger still, then measure again.",
             )
-
         return (
             "NORMAL",
-            "Healthy Resting Vital Range",
-            f"Heart rate of {assessed_rate} BPM is within the standard 60-100 BPM adult resting range.",
+            "Within a common resting range",
+            "This reading is within the common 60–100 BPM adult resting range when you are calm and at rest. It does not diagnose or exclude any condition.",
         )
 
     @staticmethod
     def vital_first_plan(triage_level: str) -> tuple[str, str, bool, str, str]:
         if triage_level == "EMERGENCY":
             return (
-                "Urgent Vital & Symptom Assessment",
-                "Seek immediate emergency medical care. Do not wait for online analysis.",
+                "Urgent symptom and vital assessment",
+                "Seek emergency care now. Do not wait for an online prediction or repeat sensor readings.",
                 True,
                 "HIGH",
-                "Emergency Department / Cardiology Center",
+                "Emergency services / emergency department",
             )
         if triage_level == "CLINICIAN_REVIEW":
             return (
-                "Physiological Vital Review Recommended",
-                "Rest for 5 minutes and repeat reading. Arrange prompt clinical evaluation if heart rate stays abnormal.",
+                "Heart-rate review is the primary outcome",
+                "Rest for five minutes and repeat the reading. If it remains outside range, or you feel unwell, arrange prompt clinical assessment.",
                 True,
                 "HIGH",
-                "General Physician / Cardiology Specialist",
+                "General Physician / Cardiology assessment",
             )
         if triage_level == "RECHECK":
             return (
-                "Recheck Vital While Resting",
-                "Sit quietly for 5 minutes and take another reading to confirm resting average.",
+                "Repeat the vital measurement before relying on the symptom result",
+                "Sit quietly for five minutes, keep the finger still, and take another stable reading. Use the symptom result only as secondary educational context.",
                 True,
                 "MEDIUM",
-                "General Physician",
+                "General Physician if the reading remains outside range or symptoms continue",
             )
         return (
-            "Heart Rate Supports Symptom Assessment",
-            "Live heart rate is stable. Proceed with symptom diagnostic guidance.",
+            "Heart rate supports routine symptom assessment",
+            "The stable vital does not add an urgent heart-rate action. Continue with symptom-based educational guidance.",
             False,
             "LOW",
             "",
@@ -241,7 +237,6 @@ class DiseaseModelService:
     ) -> Prediction:
         clean_symptoms = self.clean_input(symptoms)
 
-        # Include heart rate context in model input if available
         model_input = clean_symptoms
         if average_heart_rate or heart_rate:
             hr_val = average_heart_rate or int(heart_rate)

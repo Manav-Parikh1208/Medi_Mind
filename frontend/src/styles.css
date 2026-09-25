@@ -257,32 +257,93 @@ button {
   backdrop-filter: blur(12px);
 }
 
-/* VITALS HERO CARD */
-.vitals-hero-card {
-  padding: 20px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  color: #ffffff;
-  box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.vitals-hero-header {
-  display: flex;
+/* VITALS CARD (FROM ORIGINAL BRANCH) */
+.vitals-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px 16px;
   align-items: center;
-  gap: 16px;
+  margin-bottom: 20px;
+  padding: 18px;
+  border: 1px solid rgba(8, 125, 131, 0.22);
+  border-radius: 14px;
+  background: linear-gradient(135deg, #effafa, #ffffff);
+  box-shadow: 0 8px 24px rgba(8, 125, 131, 0.08);
 }
 
-.vitals-hero-icon {
+.vitals-icon {
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  background: #087d83;
+  box-shadow: 0 10px 24px rgba(8, 125, 131, 0.24);
 }
+
+.vitals-label,
+.vitals-meta span {
+  display: block;
+  color: #668082;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.vitals-card strong {
+  display: block;
+  margin-top: 3px;
+  color: #123033;
+  font-size: 1.85rem;
+  line-height: 1.1;
+}
+
+.vitals-copy {
+  min-width: 0;
+}
+
+.vitals-card p {
+  max-width: 43ch;
+  margin: 7px 0 0;
+  color: #45686c;
+  font-size: 0.91rem;
+  line-height: 1.5;
+}
+
+.vitals-meta {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 38px;
+  padding: 9px 11px;
+  border-top: 1px solid rgba(8, 125, 131, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.vitals-meta i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e3a008;
+  box-shadow: 0 0 0 5px rgba(227, 160, 8, 0.14);
+}
+
+.vitals-measuring .vitals-icon { background: #087d83; }
+.vitals-measuring .vitals-meta i { background: #1b9b63; box-shadow: 0 0 0 5px rgba(27, 155, 99, 0.14); }
+.vitals-disconnected,
+.vitals-sensor_missing { border-color: rgba(174, 47, 47, 0.22); background: #fff8f8; }
+.vitals-disconnected .vitals-icon,
+.vitals-sensor_missing .vitals-icon { background: #b34141; }
+.vitals-disconnected .vitals-meta i,
+.vitals-sensor_missing .vitals-meta i { background: #b34141; box-shadow: 0 0 0 5px rgba(179, 65, 65, 0.14); }
+.vitals-signal_unstable { border-color: #f1d48c; background: #fff9e8; }
+.vitals-signal_unstable .vitals-icon { background: #b98012; }
+.vitals-signal_unstable .vitals-meta i { background: #b98012; box-shadow: 0 0 0 5px rgba(185, 128, 18, 0.14); }
 
 .pulse-heart {
   animation: pulse 1.2s infinite ease-in-out;
@@ -294,47 +355,106 @@ button {
   100% { transform: scale(1); }
 }
 
-.vitals-hero-label {
-  font-size: 0.76rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  opacity: 0.9;
-}
-
-.vitals-hero-bpm {
+.field-label-row {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
-}
-
-.vitals-hero-bpm strong {
-  font-size: 2.4rem;
-  font-weight: 900;
-  line-height: 1;
-}
-
-.vitals-hero-bpm .unit {
-  font-size: 1rem;
-  font-weight: 700;
-}
-
-.vitals-hero-sub {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  font-size: 0.85rem;
-  padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.25);
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.vitals-status-tag {
-  padding: 3px 8px;
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.25);
+.heart-rate-field input {
+  color: #087d83;
+  border-color: rgba(8, 125, 131, 0.34);
+  background: #eef9f7;
+  font-size: 1.08rem;
+  font-weight: 900;
+}
+
+.heart-rate-field small {
+  display: block;
+  margin-top: 4px;
+  color: #5b7678;
+  font-size: 0.82rem;
+}
+
+.live-tag,
+.saved-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
+
+.live-tag {
+  color: #176b45;
+  background: #ddf6e8;
+}
+
+.saved-tag {
+  color: #845d00;
+  background: #fff1c5;
+}
+
+.vital-triage {
+  margin-bottom: 22px;
+  padding: 18px;
+  border: 1px solid #bfe5d7;
+  border-radius: 12px;
+  background: #effaf5;
+}
+
+.vital-triage > span {
+  display: block;
+  margin-bottom: 7px;
+  color: #176b45;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.vital-triage h3 {
+  margin: 0 0 6px;
+  font-size: 1.15rem;
+}
+
+.vital-triage p {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.care-action {
+  display: block;
+  margin-top: 14px;
+  color: #183f42;
+  font-size: 1rem;
+}
+
+.care-copy {
+  margin-top: 5px !important;
+}
+
+.triage-recheck {
+  border-color: #f1d48c;
+  background: #fff9e8;
+}
+
+.triage-recheck > span { color: #845d00; }
+
+.triage-clinician_review,
+.triage-emergency {
+  border-color: #f0b7b7;
+  background: #fff3f3;
+}
+
+.triage-clinician_review > span,
+.triage-emergency > span { color: #9f1d21; }
 
 .pulse-card {
   display: flex;
@@ -445,34 +565,6 @@ button {
   box-shadow: var(--card-shadow);
 }
 
-.live-vitals-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 18px;
-  border-radius: 14px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
-}
-
-.vitals-banner-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.vitals-banner-left strong {
-  display: block;
-  font-size: 0.95rem;
-  color: #dc2626;
-}
-
-.vitals-banner-left span {
-  font-size: 0.8rem;
-  color: #7f1d1d;
-}
-
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -574,64 +666,6 @@ button {
   display: flex;
   flex-direction: column;
   gap: 20px;
-}
-
-/* VITAL TRIAGE CARD */
-.vital-triage-card {
-  padding: 18px;
-  border-radius: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.triage-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 800;
-  font-size: 0.95rem;
-}
-
-.triage-msg {
-  font-size: 0.88rem;
-  margin: 0;
-  line-height: 1.4;
-}
-
-.triage-assessment {
-  font-size: 0.9rem;
-  margin-top: 4px;
-}
-
-.triage-action {
-  font-size: 0.85rem;
-  margin: 0;
-
-}
-
-.triage-emergency {
-  background: #fef2f2;
-  color: #dc2626;
-  border: 1px solid #fecaca;
-}
-
-.triage-clinician_review {
-  background: #fffbebfb;
-  color: #d97706;
-  border: 1px solid #fde68a;
-}
-
-.triage-recheck {
-  background: #f0f9ff;
-  color: #0369a1;
-  border: 1px solid #bae6fd;
-}
-
-.triage-normal {
-  background: #f0fdf4;
-  color: #16a34a;
-  border: 1px solid #bbf7d0;
 }
 
 .result-header span {

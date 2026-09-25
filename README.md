@@ -39,6 +39,13 @@ The existing trained-at-runtime model is preserved:
 
 The current repository does not include an image classification model. Image upload in the web UI is a preview/context feature only; disease prediction is based on symptom text.
 
+### Data quality and heart-rate safety
+
+- The original project CSV contained exact repeated rows. The backend removes duplicate symptom/diagnosis pairs before splitting data, preventing duplicate examples from leaking into both training and test sets.
+- The app additionally uses the Apache-2.0 licensed [Symptom2Disease dataset](https://huggingface.co/datasets/NeuronZero/Symptom2Disease) (`data/hf_symptom2disease/Symptom2Disease.csv`) as a supplemental symptom-text source.
+- The MAX30102 path rejects values outside 45–180 BPM and backend median/outlier filtering rejects isolated spikes before a value is displayed or supplied to the vital-first assessment.
+- No dataset in this project links a live consumer MAX30102 heart-rate reading to confirmed disease diagnoses. BPM therefore controls safety/triage and care routing; it is not represented as a validated disease label.
+
 ## Folder Structure
 
 ```text
@@ -115,19 +122,9 @@ Example prediction request:
 
 ```json
 {
-  "symptoms": "severe headache with nausea and sensitivity to light",
-  "image_filename": null
+  "symptoms": "severe headache with nausea and sensitivity to light"
 }
 ```
-
-## Screenshots
-
-Add screenshots after running the app:
-
-- `docs/screenshots/landing-page.png`
-- `docs/screenshots/detection-page.png`
-- `docs/screenshots/dashboard.png`
-- `docs/screenshots/mobile-view.png`
 
 ## Deployment
 
