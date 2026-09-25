@@ -23,6 +23,17 @@ export function predictDisease(payload) {
   });
 }
 
+export function submitFeedback(payload) {
+  return request('/api/feedback', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export function getStats() {
   return request('/api/stats');
+}
+
+export function getVitals() {
+  return request('/api/vitals');
 }
