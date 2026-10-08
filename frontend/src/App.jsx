@@ -39,8 +39,6 @@ const initialQuestionnaire = {
   severity: '',
   symptoms: '',
   preExistingConditions: [],
-  heartRate: '',
-  averageHeartRate: '',
 };
 
 const navItems = [
@@ -55,6 +53,10 @@ const navItems = [
 
 const faqs = [
   {
+    question: 'Which COM port should I use for the ESP32 / MAX30102 sensor?',
+    answer: 'Connect the ESP32/MAX30102 to COM3. Medi Mind reads that fixed port automatically; no port selection is required.',
+  },
+  {
     question: 'How does live heart rate monitoring affect disease prediction?',
     answer: 'Live heart rate and average BPM are streamed from the MAX30102 / ESP32 sensor. Abnormally high (tachycardia >100 BPM) or low (<60 BPM) heart rates combined with symptoms like chest pain escalate emergency level warnings and provide vital triage guidance.',
   },
@@ -65,10 +67,6 @@ const faqs = [
   {
     question: 'How does nearest hospital recommendation work?',
     answer: 'Based on the predicted disease and medical specialty (e.g. Cardiology for heart issues, Neurology for migraines, Pulmonology for asthma/pneumonia), Medi Mind suggests specialized 24/7 hospital centers with location distance, ratings, and direct navigation links.',
-  },
-  {
-    question: 'How does the accuracy survey and feedback retrain work?',
-    answer: 'If the AI prediction is incorrect or if you select an alternative differential diagnosis, submitting your feedback automatically appends your verified case to the dataset and retrains the AI model live, continuously boosting prediction accuracy.',
   },
 ];
 
@@ -106,10 +104,13 @@ function App() {
   const [statsError, setStatsError] = useState('');
   const [vitals, setVitals] = useState({
     state: 'disconnected',
-    message: 'ESP32 is unavailable on COM13. Connect it, then close Arduino Serial Monitor or any other serial app.',
+    message: 'ESP32 is not connected to COM3. Connect the ESP32 and start its sensor stream.',
     heart_rate: null,
     average_heart_rate: null,
+    active_port: 'COM3',
+    available_ports: [],
   });
+
   const [questionnaire, setQuestionnaire] = useState(initialQuestionnaire);
   const [prediction, setPrediction] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -130,15 +131,17 @@ function App() {
       getVitals()
         .then((data) => {
           setVitals(data);
-          if (data.heart_rate) {
-            setQuestionnaire((curr) => ({
-              ...curr,
-              heartRate: curr.heartRate || String(Math.round(data.heart_rate)),
-              averageHeartRate: curr.averageHeartRate || (data.average_heart_rate ? String(data.average_heart_rate) : ''),
-            }));
-          }
         })
-        .catch(() => {});
+        .catch(() => {
+          setVitals({
+            state: 'disconnected',
+            message: 'Cannot reach the vitals service. Start the backend, then connect the ESP32 to COM3.',
+            heart_rate: null,
+            average_heart_rate: null,
+            active_port: 'COM3',
+            available_ports: [],
+          });
+        });
     };
 
     pollVitals();
@@ -202,8 +205,8 @@ function App() {
 
     setLoading(true);
     try {
-      const hrVal = questionnaire.heartRate ? Number(questionnaire.heartRate) : vitals.heart_rate;
-      const avgHrVal = questionnaire.averageHeartRate ? Number(questionnaire.averageHeartRate) : vitals.average_heart_rate;
+      const hrVal = vitals.heart_rate;
+      const avgHrVal = vitals.average_heart_rate;
 
       const result = await predictDisease({
         symptoms: questionnaire.symptoms,
@@ -303,11 +306,11 @@ function App() {
           </div>
 
           <div className="hero-visual" aria-label="Medical analytics illustration">
-            {/* LIVE HEART RATE CARD */}
+            {/* LIVE VITALS CARD (EXACT ORIGINAL FORMAT) */}
             <div className={`vitals-card vitals-${vitals.state}`}>
               <div className="vitals-icon"><Heart size={24} className={vitals.heart_rate ? 'pulse-heart' : ''} /></div>
               <div className="vitals-copy">
-                <span className="vitals-label">LIVE SENSOR FEED (COM13)</span>
+                <span className="vitals-label">HARDWARE FEED ({vitals.active_port || 'COM3'})</span>
                 <strong>{vitals.heart_rate ? `${Math.round(vitals.heart_rate)} BPM` : 'No vital'}</strong>
                 <p>{vitals.message}</p>
               </div>
@@ -357,7 +360,7 @@ function App() {
           <div className="section-heading">
             <span className="eyebrow"><Upload size={16} /> AI Symptom & Vital Checker</span>
             <h2>Patient Questionnaire & Live Heart Rate Analysis</h2>
-            <p>Stream live heart rate from MAX30102 sensor, describe symptoms in natural language, and generate diagnostic predictions.</p>
+            <p>Stream live heart rate from the MAX30102 sensor on COM3 and generate diagnostic predictions.</p>
           </div>
 
           <div className="detector-layout">
@@ -366,7 +369,7 @@ function App() {
               <div className={`vitals-card vitals-${vitals.state}`}>
                 <div className="vitals-icon"><Heart size={24} className={vitals.heart_rate ? 'pulse-heart' : ''} /></div>
                 <div className="vitals-copy">
-                  <span className="vitals-label">LIVE MAX30102 HARDWARE FEED</span>
+                  <span className="vitals-label">HARDWARE FEED ({vitals.active_port || 'COM3'})</span>
                   <strong>{vitals.heart_rate ? `${Math.round(vitals.heart_rate)} BPM` : 'No Live Pulse'}</strong>
                   <p>{vitals.message}</p>
                 </div>
@@ -401,29 +404,11 @@ function App() {
               </div>
 
               <div className="form-grid">
-                <div className="field heart-rate-field">
-                  <div className="field-label-row">
-                    <label htmlFor="heartRate">Current Heart Rate (BPM)</label>
-                    {vitals.heart_rate ? <span className="live-tag">LIVE SENSOR</span> : <span className="saved-tag">MANUAL / OFF</span>}
-                  </div>
-                  <input
-                    id="heartRate"
-                    type="number"
-                    value={questionnaire.heartRate}
-                    onChange={(event) => updateQuestion('heartRate', event.target.value)}
-                    placeholder={vitals.heart_rate ? `${Math.round(vitals.heart_rate)} BPM (Live)` : 'e.g. 75'}
-                  />
-                  <small>Auto-filled from ESP32 MAX30102 stream or manual entry.</small>
-                </div>
-                <div className="field">
-                  <label htmlFor="averageHeartRate">Average Resting Pulse (BPM)</label>
-                  <input
-                    id="averageHeartRate"
-                    type="number"
-                    value={questionnaire.averageHeartRate}
-                    onChange={(event) => updateQuestion('averageHeartRate', event.target.value)}
-                    placeholder={vitals.average_heart_rate ? `${vitals.average_heart_rate} BPM (Avg)` : 'e.g. 72'}
-                  />
+                <div className="field average-heart-rate-field">
+                  <label>Average Heart Rate</label>
+                  <output aria-live="polite">
+                    {vitals.average_heart_rate ? `${vitals.average_heart_rate} BPM` : 'No average recorded yet'}
+                  </output>
                 </div>
               </div>
 

@@ -69,6 +69,8 @@ class VitalsResponse(BaseModel):
     message: str
     heart_rate: float | None = None
     average_heart_rate: int | None = None
+    active_port: str = "COM3"
+    available_ports: list[str] = Field(default_factory=list)
     vital_triage_level: str = "NORMAL"
     vital_triage_title: str = "Normal Resting Vital"
     vital_triage_message: str = "Heart rate within normal range."

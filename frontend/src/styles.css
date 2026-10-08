@@ -239,6 +239,12 @@ button {
   transition: all 0.2s ease;
 }
 
+.secondary-button.small {
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  border-radius: 8px;
+}
+
 .secondary-button:hover {
   background: #f8fafc;
   border-color: #94a3b8;
@@ -257,7 +263,7 @@ button {
   backdrop-filter: blur(12px);
 }
 
-/* VITALS CARD (FROM ORIGINAL BRANCH) */
+/* VITALS CARD (ORIGINAL BRANCH) */
 .vitals-card {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -377,6 +383,45 @@ button {
   font-size: 0.82rem;
 }
 
+.average-heart-rate-field {
+  grid-column: 1 / -1;
+}
+
+.average-heart-rate-field output {
+  padding: 12px 16px;
+  border: 1px solid rgba(8, 125, 131, 0.34);
+  border-radius: 10px;
+  background: #eef9f7;
+  color: #087d83;
+  font-size: 1.08rem;
+  font-weight: 900;
+}
+
+.detector-form .vitals-card {
+  gap: 9px 13px;
+  margin-bottom: 16px;
+  padding: 14px;
+}
+
+.detector-form .vitals-icon {
+  width: 46px;
+  height: 46px;
+}
+
+.detector-form .vitals-card strong {
+  font-size: 1.65rem;
+}
+
+.detector-form .vitals-card p {
+  margin-top: 4px;
+  font-size: 0.86rem;
+}
+
+.detector-form .vitals-meta {
+  min-height: 32px;
+  padding: 7px 9px;
+}
+
 .live-tag,
 .saved-tag {
   display: inline-flex;
@@ -396,8 +441,8 @@ button {
 }
 
 .saved-tag {
-  color: #845d00;
-  background: #fff1c5;
+  color: #9f1d21;
+  background: #fff3f3;
 }
 
 .vital-triage {
